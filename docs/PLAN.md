@@ -83,7 +83,7 @@ project/
 - Add execution history, detail and log screens.
 
 ### 7. Delivery
-- Add Docker Compose for local services.
+- Add Docker Compose for CI and production services. Local development uses the native PostgreSQL 16 service (`ARCHITECTURE.md` §13); compose must pin `postgres:16` with the same role and database names so the two environments stay interchangeable.
 - Add CI for formatting, tests and builds.
 - Add structured logging and basic metrics.
 - Document secrets, backups and deployment.

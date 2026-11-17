@@ -57,7 +57,7 @@ The 8–12 week outline below is an estimate for a focused solo or small-team bu
 ### Milestone 3 — PostgreSQL and persistence
 
 **Deliverables**
-- PostgreSQL via Docker Compose.
+- PostgreSQL 16 for local development: the native Windows service (`postgresql-x64-16`) with role `meld` and databases `meld` / `meld_test`. `postgres:16` container configuration for CI and production parity (`ARCHITECTURE.md` §13).
 - Flyway migrations.
 - JPA entities and repositories.
 - Workspace, agent and workflow persistence.

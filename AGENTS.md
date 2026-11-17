@@ -76,5 +76,7 @@ files. Even then, check the relevant doc before asserting a requirement.
 - `JAVA_HOME` → Temurin 21 (`C:\Program Files\Eclipse Adoptium\jdk-21.0.13.9-hotspot`)
 - Maven 3.10.1 (`mvn` via scoop), plus a Maven wrapper once `backend/` exists
 - Node 24.15 / npm 11.12
-- Docker Desktop: **not yet installed** (needs WSL2 + reboot) — PostgreSQL and
-  Testcontainers are blocked until it is.
+- **PostgreSQL 16** — native Windows service `postgresql-x64-16` on `localhost:5432`
+  (binaries in `C:\Program Files\PostgreSQL\16\bin`). Role `meld`; databases `meld`
+  and `meld_test`. Integration tests use `meld_test` only. Docker is **not**
+  installed and is not required for local development — see `ARCHITECTURE.md` §13.

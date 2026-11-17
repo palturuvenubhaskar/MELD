@@ -12,6 +12,8 @@ Reasons:
 
 Use Flyway for schema migrations. Treat this document as the logical starting design; implement and evolve the physical schema through reviewed migrations.
 
+Local development targets a native **PostgreSQL 16** service on `localhost:5432` with the application role `meld` and two databases, `meld` (development) and `meld_test` (integration tests). CI and production use a `postgres:16` container with the same names. See `ARCHITECTURE.md` §13 for the decision and its consequences. Use the `psql`, `pg_dump` and `pg_restore` binaries from the PostgreSQL 16 installation for inspection and backup testing.
+
 ## 2. Design principles
 
 1. Every tenant-owned record must be associated with a workspace, directly or through a parent.

@@ -18,7 +18,7 @@ The system should be:
 | Backend | Java 21 LTS + Spring Boot 3.x | REST API and application services |
 | Security | Spring Security | Authentication and authorization |
 | Persistence | Spring Data JPA / Hibernate | Relational data access |
-| Database | PostgreSQL | Primary persistent storage |
+| Database | PostgreSQL 16 | Primary persistent storage; native Windows service for local development, `postgres:16` container in CI and production |
 | Migrations | Flyway | Version-controlled schema changes |
 | Cache / queue support | Redis | Caching and later background coordination |
 | Build | Maven | Java dependency and build management |
@@ -28,7 +28,7 @@ The system should be:
 | AI integration | Spring AI or provider adapters | Model access |
 | Tool integration | MCP Java SDK where appropriate | Model Context Protocol integrations |
 | Testing | JUnit 5, Mockito, Testcontainers | Unit and integration tests |
-| Deployment | Docker / Docker Compose | Local and production packaging |
+| Deployment | Docker / Docker Compose | CI and production packaging; local development runs PostgreSQL natively |
 | Observability | Structured logs; later OpenTelemetry and Prometheus | Diagnostics and metrics |
 
 Use a Java/Spring version combination that is supported by the selected dependency versions. Confirm compatibility before upgrading the Java baseline.
@@ -249,7 +249,7 @@ Cancellation is cooperative. Persist a cancellation request, check it before sta
 
 - Unit tests for domain rules and state transitions.
 - Service tests for authorization and workflow validation.
-- Integration tests using Testcontainers for PostgreSQL.
+- Integration tests against a real PostgreSQL 16 instance: a dedicated database on the native local service (`meld_test`), Testcontainers where Docker is available, and a `postgres:16` service container in CI.
 - API tests for authentication and tenant isolation.
 - Execution-engine tests for success, failure, cancellation, retries and approvals.
 - Frontend tests for critical workflow-builder interactions.
@@ -265,4 +265,26 @@ Initial deployment:
 - Reverse proxy / managed ingress.
 - Secret manager or protected environment configuration.
 
-Use Docker Compose for local development. Add production orchestration only when deployment needs justify it.
+Add production orchestration only when deployment needs justify it.
+
+### Local development environment (decided)
+
+Local development on Windows uses a **native PostgreSQL 16 service**, not a container:
+
+| Item | Value |
+|---|---|
+| Version | PostgreSQL 16 (EDB Windows installer, runs as service `postgresql-x64-16`) |
+| Host / port | `localhost:5432` |
+| Application role | `meld` — `LOGIN`, no `SUPERUSER`, no `CREATEDB`, no `CREATEROLE` |
+| Dev database | `meld` (owner `meld`) |
+| Test database | `meld_test` (owner `meld`) |
+| Auth method | `scram-sha-256` for `local`, `127.0.0.1/32` and `::1/128` |
+
+Reasoning: the target machine has limited RAM and no WSL2, so Docker Desktop would cost far more than it returns for a single-database project. Docker is not required by any part of the design — the database is the only always-on dependency in the MVP, and Redis is explicitly deferred.
+
+Consequences:
+
+- Integration tests run against `meld_test` with Flyway cleaning the schema between runs. The test datasource is hard-wired to `meld_test` so a misconfigured run cannot touch `meld`. If test isolation later becomes a problem, switch to `io.zonky.test:embedded-postgres`, which runs real PostgreSQL binaries without Docker.
+- CI and production still use a `postgres:16` container, so the deployment topology above is unchanged.
+- Whenever `infrastructure/docker-compose.yml` is written, it must pin `postgres:16` on port 5432 with the same database and role names, so local and containerised environments are interchangeable.
+- Connection settings come from environment variables (`.env`, never committed); `.env.example` carries placeholders only.

@@ -14,7 +14,7 @@ Verify the platform from unit behavior through complete user journeys. Prioritiz
 Use JUnit 5 and Mockito for domain rules, workflow validation, state transitions, node behavior, retry eligibility, permission decisions and input mapping. Keep unit tests fast and independent of external providers/database.
 
 ### Integration tests
-Use Spring Boot test support and Testcontainers where practical for PostgreSQL persistence, Flyway migrations, repository queries, transactions, authentication, authorization, workspace isolation and execution state.
+Use Spring Boot test support against a real PostgreSQL 16 instance for persistence, Flyway migrations, repository queries, transactions, authentication, authorization, workspace isolation and execution state. Locally that is the native service's `meld_test` database (never `meld`); in CI it is a `postgres:16` service container. Use Testcontainers only where Docker is available.
 
 ### API tests
 Verify status codes, request validation, response schemas, authentication, authorization, pagination, filtering and consistent errors.
@@ -124,7 +124,7 @@ Establish measured baselines rather than inventing performance targets. Test pag
 Record API latency, workflow/node duration, provider latency, failure/retry rates, token usage and estimated cost.
 
 ## 8. Test environments and data
-- **Local:** Docker Compose, local PostgreSQL, mocked provider by default.
+- **Local:** native PostgreSQL 16 service (`localhost:5432`, database `meld_test`), Flyway cleans the schema per run, mocked provider by default, no Docker required.
 - **CI:** isolated database and deterministic provider mocks.
 - **Staging:** production-like configuration and synthetic data.
 - **Production:** real user data, strict access controls and monitoring.
