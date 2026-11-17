@@ -1,0 +1,88 @@
+# ---------------------------------------------------------------------------
+# MELD — repository ignores
+#
+# NOTE: docs/ is intentionally NOT ignored. The docs are the source of truth
+# for this project (see docs/PLAN.md, "Repository structure") and must be
+# committed and versioned alongside the code.
+# ---------------------------------------------------------------------------
+
+# --- Secrets / environment -------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+application-local.yml
+application-local.properties
+
+# --- Java / Maven ----------------------------------------------------------
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+!**/maven-wrapper.jar
+*.log
+hs_err_pid*
+replay_pid*
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# --- Node / Vite / frontend ------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+coverage/
+.nyc_output/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+playwright-report/
+test-results/
+blob-report/
+.storybook-out/
+
+# --- Docker / infrastructure ----------------------------------------------
+.infrastructure/*.env
+!infrastructure/**/*.example
+postgres-data/
+pgdata/
+*.sqlite
+*.db
+
+# --- IDE / editors ---------------------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.settings/
+.project
+.classpath
+.factorypath
+*.swp
+*~
+
+# --- OS --------------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+._*
+
+# --- Tooling / agent output ------------------------------------------------
+graphify-out/
+.open-code-tmp/
+*.tsbuildinfo
+.eslintcache
+.prettiercache

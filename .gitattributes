@@ -1,0 +1,18 @@
+# Normalize line endings so Windows and Linux checkouts agree.
+* text=auto eol=lf
+
+# Keep binaries untouched.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.pdf binary
+*.xlsx binary
+
+# Shell/build scripts must stay LF to run inside containers and WSL.
+*.sh text eol=lf
+mvnw text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
