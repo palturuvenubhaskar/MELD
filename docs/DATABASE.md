@@ -247,7 +247,7 @@ CREATE TABLE executions (
     input JSONB NOT NULL DEFAULT '{}'::jsonb,
     output JSONB,
     idempotency_key VARCHAR(160),
-    request_hash CHAR(64),
+    request_hash VARCHAR(64),
     lease_owner VARCHAR(160),
     heartbeat_at TIMESTAMPTZ,
     lease_expires_at TIMESTAMPTZ,
@@ -339,6 +339,29 @@ CREATE TABLE usage_records (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     FOREIGN KEY (workspace_id, execution_id)
         REFERENCES executions(workspace_id, id)
+);
+```
+
+### audit_logs
+
+`audit_logs` records security-sensitive and administrative activity. It is
+listed in §3 but has no illustrative definition above; the implementation
+(V9) uses the following shape. Retention is longer than ordinary application
+logs (§8), and `metadata` must never contain secrets or password hashes.
+
+```sql
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY,
+    workspace_id UUID NOT NULL REFERENCES workspaces(id),
+    user_id UUID REFERENCES users(id),
+    event_type VARCHAR(100) NOT NULL,
+    event_action VARCHAR(50) NOT NULL,
+    resource_type VARCHAR(60),
+    resource_id UUID,
+    metadata JSONB,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 

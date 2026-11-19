@@ -65,6 +65,21 @@ All five must succeed. If `mvn` or `psql` is "not recognized", the shell is
 inheriting a stale environment — set the two variables above, or restart the
 terminal/agent host.
 
+### Running the backend test suite
+
+`application-test.yml` intentionally contains no password. Export `.env` into
+the shell first, then run the wrapper:
+
+```powershell
+Get-Content .env | Where-Object { $_ -match '^[A-Za-z_][A-Za-z0-9_]*=' } |
+    ForEach-Object { $k,$v = $_ -split '=',2; Set-Item -Path "env:$k" -Value $v }
+cd backend
+./mvnw test
+```
+
+Tests resolve `meld_test` only; the build fails fast if `DB_PASSWORD` is unset.
+Persistence tests are transactional and roll back, so rows do not accumulate.
+
 ## 3. Open decisions (needed by phase 4–5, not phase 0–2)
 
 Tracked in `PRD.md` §13. Proposed defaults, not yet ratified:

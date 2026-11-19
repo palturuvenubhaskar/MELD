@@ -1,0 +1,19 @@
+# Test profile. The JDBC URL is pinned to the dedicated test database so a
+# misconfigured run cannot touch the development database `meld`
+# (docs/ARCHITECTURE.md section 13, docs/TEST.md section 8).
+#
+# Credentials are never committed. Provide DB_USER / DB_PASSWORD (and optionally
+# TEST_DATABASE_URL) in the environment, for example by sourcing .env, before
+# running `./mvnw test`. The build fails fast if DB_PASSWORD is absent.
+spring:
+  datasource:
+    url: ${TEST_DATABASE_URL:jdbc:postgresql://localhost:5432/meld_test}
+    username: ${DB_USER:meld}
+    password: ${DB_PASSWORD}
+  flyway:
+    # Tests may clean the dedicated test database between runs.
+    clean-disabled: false
+
+logging:
+  level:
+    com.meld: INFO

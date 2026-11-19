@@ -61,7 +61,8 @@ The 8–12 week outline below is an estimate for a focused solo or small-team bu
 - Flyway migrations.
 - JPA entities and repositories.
 - Workspace, agent and workflow persistence.
-- Repository and integration tests with Testcontainers.
+- Repository and integration tests against a real PostgreSQL 16 instance
+  (`meld_test` locally; Testcontainers where Docker is available).
 
 **Done when**
 - Data survives application restarts.
