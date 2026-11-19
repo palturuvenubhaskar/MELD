@@ -73,15 +73,25 @@ The 8–12 week outline below is an estimate for a focused solo or small-team bu
 
 **Deliverables**
 - Registration and login.
-- Password hashing.
-- Session or token-based authentication.
-- Workspace creation and membership.
-- Role checks and tenant-scoped service methods.
+- Password hashing (BCrypt, cost 12).
+- Session-based authentication: HTTP-only `MELD_SESSION` cookie, session-id
+  rotation on login, JSON `401`/`403` responses.
+- CSRF protection on all state-changing requests (cookie double-submit with a
+  `GET /auth/csrf` bootstrap for the SPA).
+- Workspace creation and membership, with roles `OWNER` and `MEMBER`.
+- Role checks and tenant-scoped service methods (`WorkspaceAccessService` is
+  the single authorization seam).
+- Case-insensitive email uniqueness and email normalization at the API
+  boundary.
 
 **Done when**
 - Protected endpoints reject unauthenticated requests.
 - A user cannot read or modify another workspace's records.
 - Cross-workspace authorization tests pass.
+
+**Not in M4** (deliberately deferred): email verification, password reset,
+email invitations, login rate limiting/lockout, workspace deletion, and audit
+logging of pre-workspace auth events.
 
 ### Milestone 5 — AI provider and agent management
 

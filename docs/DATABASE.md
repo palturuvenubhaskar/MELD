@@ -75,6 +75,11 @@ The following SQL is illustrative. Convert it into ordered Flyway migrations and
 
 ### users
 
+Emails are stored normalized (trimmed, lowercased) by the application, and a
+functional unique index on `lower(email)` enforces that rule at the database
+level so a writer that bypasses the service layer cannot create a case-variant
+duplicate account.
+
 ```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY,
@@ -102,6 +107,8 @@ CREATE TABLE workspaces (
 CREATE TABLE workspace_members (
     workspace_id UUID NOT NULL REFERENCES workspaces(id),
     user_id UUID NOT NULL REFERENCES users(id),
+    -- Role vocabulary (M4): OWNER, MEMBER. Stored as text so roles can be
+    -- added without a migration; authorization compares parsed enum rank.
     role VARCHAR(30) NOT NULL,
     joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (workspace_id, user_id)
@@ -368,9 +375,12 @@ CREATE TABLE audit_logs (
 ## 6. Important indexes and constraints
 
 Start with:
-- Unique user email.
+- Unique user email, plus a functional unique index on `lower(email)` so email
+  uniqueness is case-insensitive even outside the service layer (V10).
 - Unique workspace slug.
 - Unique membership `(workspace_id, user_id)`.
+- Index memberships by `user_id`; listing a user's workspaces starts from the
+  membership side of the composite primary key (V10).
 - Unique agent name per workspace if desired.
 - Unique workflow version number per workflow.
 - Unique node key per workflow version.

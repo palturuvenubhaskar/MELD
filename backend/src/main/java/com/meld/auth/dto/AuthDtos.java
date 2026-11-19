@@ -1,17 +1,22 @@
 package com.meld.auth.dto;
 
+import com.meld.auth.MeldUserPrincipal;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.UUID;
+
 /**
  * Authentication DTOs per ARCHITECTURE.md §7.
- * Uses validation annotations; never exposes password hashes.
+ * Never exposes password hashes. Workspace context lives in WorkspaceDtos.
  */
-public class AuthDtos {
+public final class AuthDtos {
+
+    private AuthDtos() {}
 
     public record RegisterRequest(
-            @NotBlank @Email String email,
+            @NotBlank @Email @Size(max = 320) String email,
             @NotBlank @Size(min = 8, max = 128) String password,
             @Size(max = 120) String displayName
     ) {}
@@ -21,24 +26,20 @@ public class AuthDtos {
             @NotBlank String password
     ) {}
 
-    public record AuthResponse(
-            String userId,
+    public record UserResponse(
+            UUID id,
             String email,
-            String displayName,
-            String workspaceId,
-            String workspaceName
-    ) {}
+            String displayName
+    ) {
+        public static UserResponse from(MeldUserPrincipal principal) {
+            return new UserResponse(principal.getId(), principal.getEmail(), principal.getDisplayName());
+        }
+    }
 
-    public record WorkspaceResponse(
-            String id,
-            String name,
-            String slug,
-            String role,
-            String createdAt
-    ) {}
-
-    public record CreateWorkspaceRequest(
-            @NotBlank @Size(min = 1, max = 120) String name,
-            @NotBlank @Size(min = 1, max = 80) String slug
+    /** CSRF bootstrap for browser clients (cookie double-submit). */
+    public record CsrfResponse(
+            String headerName,
+            String parameterName,
+            String token
     ) {}
 }

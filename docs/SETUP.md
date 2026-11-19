@@ -80,6 +80,25 @@ cd backend
 Tests resolve `meld_test` only; the build fails fast if `DB_PASSWORD` is unset.
 Persistence tests are transactional and roll back, so rows do not accumulate.
 
+### API smoke test (M4)
+
+Registration does not create a session; log in afterwards. Browser clients must
+send the CSRF token from `GET /auth/csrf` in the `X-XSRF-TOKEN` header
+(cookie double-submit):
+
+```powershell
+$base = 'http://localhost:8080/api/v1'
+$s = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$csrf = Invoke-RestMethod "$base/auth/csrf" -WebSession $s
+$h = @{ 'X-XSRF-TOKEN' = $csrf.token }
+$body = @{ email = 'dev@example.test'; password = 'correct-horse-battery'; displayName = 'Dev' } | ConvertTo-Json
+
+Invoke-RestMethod "$base/auth/register" -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body $body
+Invoke-RestMethod "$base/auth/login"    -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body $body
+Invoke-RestMethod "$base/workspaces"    -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body (@{ name = 'Demo Workspace' } | ConvertTo-Json)
+Invoke-RestMethod "$base/workspaces"    -WebSession $s
+```
+
 ## 3. Open decisions (needed by phase 4–5, not phase 0–2)
 
 Tracked in `PRD.md` §13. Proposed defaults, not yet ratified:
@@ -91,7 +110,8 @@ Tracked in `PRD.md` §13. Proposed defaults, not yet ratified:
 | Workflow I/O | JSON in / JSON out |
 | Streaming | No — poll status (`ARCHITECTURE.md` §9) |
 | Limits | 120 s/node, 2k output tokens, 20 tool calls, 3 concurrent per workspace |
-| Auth transport | HTTP-only session cookie, stateful Spring Security |
+| Auth transport | **Decided (M4):** HTTP-only session cookie, stateful Spring Security, CSRF double-submit |
+| Workspace roles | **Decided (M4):** `OWNER` and `MEMBER`; text column so roles can be added later |
 
 Record the decision in the docs when made — do not let it live only in a chat.
 

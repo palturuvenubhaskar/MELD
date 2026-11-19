@@ -172,8 +172,8 @@ Use versioned REST endpoints under `/api/v1`.
 
 | Area | Example endpoints |
 |---|---|
-| Authentication | `POST /auth/register`, `POST /auth/login` |
-| Workspaces | `GET /workspaces`, `POST /workspaces` |
+| Authentication | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/csrf` |
+| Workspaces | `GET /workspaces`, `POST /workspaces`, `GET /workspaces/{workspaceId}`, `GET/POST /workspaces/{workspaceId}/members`, `DELETE /workspaces/{workspaceId}/members/{userId}` |
 | Agents | `GET /workspaces/{workspaceId}/agents`, `POST /workspaces/{workspaceId}/agents` |
 | Workflows | `GET /workspaces/{workspaceId}/workflows`, `POST /workspaces/{workspaceId}/workflows` |
 | Execution | `POST /workflows/{workflowId}/executions` |
@@ -183,6 +183,22 @@ Use versioned REST endpoints under `/api/v1`.
 | Approval | `POST /approvals/{approvalId}/decision` |
 
 Use DTOs at the API boundary. Do not expose JPA entities directly.
+
+### Authentication transport (M4)
+
+- Authentication uses a server-side session identified by an HTTP-only
+  `MELD_SESSION` cookie (`SameSite=Lax`; `Secure` outside local development).
+  Login is handled in `AuthController` so requests and responses are JSON; the
+  session id is rotated on login to prevent session fixation.
+- CSRF protection stays enabled for every state-changing request. Browser
+  clients call `GET /auth/csrf`, then echo the readable `XSRF-TOKEN` cookie in
+  the `X-XSRF-TOKEN` header (cookie double-submit).
+- Unauthenticated requests to protected endpoints return `401`; insufficient
+  role returns `403`. A workspace the caller does not belong to is reported as
+  `404`, so membership cannot be probed.
+- Global authority is `ROLE_USER` only. Workspace roles (`OWNER`, `MEMBER`) are
+  per-workspace and enforced by `WorkspaceAccessService` on every
+  workspace-scoped operation; they are not stored in the session.
 
 ## 8. Workflow execution design
 
