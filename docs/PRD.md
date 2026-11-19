@@ -221,7 +221,9 @@ The MVP is ready for a controlled beta when a user can:
 ## 13. Open product decisions
 
 Track these decisions before implementation:
-- Which AI providers are supported first?
+- Which AI providers are supported first? — **Decided:** OpenRouter through the
+  OpenAI-compatible adapter, default model
+  `meta-llama/llama-3.1-8b-instruct:free` (`ARCHITECTURE.md` §7).
 - Which tools are built in versus user-configured?
 - What is the first supported workflow input/output format?
 - Should the MVP support streaming model output?

@@ -42,3 +42,18 @@ management:
     health:
       probes:
         enabled: true
+
+meld:
+  security:
+    # Base64-encoded 32-byte AES-256 key for provider credentials.
+    # Required at startup; the real value lives only in the environment.
+    credential-encryption-key: ${MELD_CREDENTIAL_ENCRYPTION_KEY:}
+  providers:
+    # Server-side transport policy. Base URLs are configuration, never user input.
+    connect-timeout: ${PROVIDER_CONNECT_TIMEOUT:10s}
+    read-timeout: ${PROVIDER_READ_TIMEOUT:60s}
+    base-urls:
+      openrouter: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+      openai: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      groq: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
+      ollama: ${OLLAMA_BASE_URL:http://localhost:11434/v1}

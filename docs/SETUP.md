@@ -99,13 +99,46 @@ Invoke-RestMethod "$base/workspaces"    -Method Post -WebSession $s -Headers $h 
 Invoke-RestMethod "$base/workspaces"    -WebSession $s
 ```
 
+### Provider credentials and agents (M5)
+
+The backend refuses to start without a credential-encryption key: 32 random
+bytes, base64-encoded, kept in `.env` as `MELD_CREDENTIAL_ENCRYPTION_KEY` (the
+export loop above picks it up). Generate one per environment:
+
+```powershell
+$bytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+Provider base URLs default to the real services; override them with
+`OPENROUTER_BASE_URL`, `OPENAI_BASE_URL`, `GROQ_BASE_URL` or `OLLAMA_BASE_URL`
+for a gateway or a local stub. Continuing with the session, headers and
+workspace from the section above:
+
+```powershell
+$cred = Invoke-RestMethod "$base/workspaces/$($ws.id)/providers" -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body (@{
+  provider = 'OPENROUTER'; displayName = 'My OpenRouter key'; apiKey = $env:MELD_SMOKE_PROVIDER_KEY
+} | ConvertTo-Json)
+$agent = Invoke-RestMethod "$base/workspaces/$($ws.id)/agents" -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body (@{
+  name = 'Smoke Agent'; model = 'meta-llama/llama-3.1-8b-instruct:free';
+  systemPrompt = 'Answer in one short sentence.'; providerCredentialId = $cred.id;
+  temperature = 0.2; maxTokens = 128
+} | ConvertTo-Json)
+Invoke-RestMethod "$base/workspaces/$($ws.id)/agents/$($agent.id)/test" -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body (@{ input = 'Say hello.' } | ConvertTo-Json)
+```
+
+Read the provider key from `$env:MELD_SMOKE_PROVIDER_KEY` instead of pasting it
+into the script, so it stays out of shell history. The test response contains
+output, model, token counts and latency; no endpoint ever returns the key.
+
 ## 3. Open decisions (needed by phase 4–5, not phase 0–2)
 
 Tracked in `PRD.md` §13. Proposed defaults, not yet ratified:
 
 | Decision | Proposed |
 |---|---|
-| First provider | OpenAI-compatible adapter (covers OpenAI, Groq, OpenRouter, Ollama) |
+| First provider | **Decided (M5):** OpenRouter through the OpenAI-compatible adapter; default model `meta-llama/llama-3.1-8b-instruct:free` |
 | MVP tools | 2 built-ins: allowlisted HTTP GET, JSON transform |
 | Workflow I/O | JSON in / JSON out |
 | Streaming | No — poll status (`ARCHITECTURE.md` §9) |

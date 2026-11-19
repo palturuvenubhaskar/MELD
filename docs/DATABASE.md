@@ -133,6 +133,12 @@ CREATE TABLE provider_credentials (
 
 Never put decrypted credentials in API responses or ordinary logs. Keep encryption keys outside PostgreSQL and the repository.
 
+Stored secrets use AES-256-GCM with a random 12-byte IV per write. The
+`encrypted_secret` value is `IV || ciphertext || authentication tag`, and
+`key_version` records the scheme (`v1`). The key is the base64-encoded 32-byte
+value in `MELD_CREDENTIAL_ENCRYPTION_KEY`; rotating it means re-encrypting rows
+under a new version, never editing an applied migration.
+
 ### agents
 
 ```sql

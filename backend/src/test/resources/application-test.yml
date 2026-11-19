@@ -14,6 +14,17 @@ spring:
     # Tests may clean the dedicated test database between runs.
     clean-disabled: false
 
+meld:
+  security:
+    # Fixed AES-256 key for tests only. This is a public test fixture, not a
+    # real credential; production supplies MELD_CREDENTIAL_ENCRYPTION_KEY.
+    credential-encryption-key: dW5pdC10ZXN0LWtleS0wMTIzNDU2Nzg5YWJjZGVmZ2g=
+  providers:
+    connect-timeout: 2s
+    read-timeout: 800ms
+    base-urls:
+      openrouter: http://localhost:1/unused
+
 logging:
   level:
     com.meld: INFO

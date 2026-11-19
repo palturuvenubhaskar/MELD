@@ -96,21 +96,31 @@ logging of pre-workspace auth events.
 ### Milestone 5 — AI provider and agent management
 
 **Deliverables**
-- Provider adapter interface.
-- First supported AI provider integration.
-- Secure provider credential storage.
-- Default-deny network egress for tools, with explicit host allowlists and blocking for local, private, link-local, multicast, and metadata destinations.
-- Limit MVP tools to read-only or low-risk actions; sensitive actions stay disabled until approval nodes ship.
-- Agent create, edit, list and test APIs.
-- Prompt and model configuration.
-- Token usage capture where available.
+- Provider adapter interface, with an OpenAI-compatible chat-completions
+  implementation used for OpenRouter first (the free
+  `meta-llama/llama-3.1-8b-instruct:free` model) and reusable for OpenAI, Groq
+  and Ollama base URLs.
+- Secure provider credential storage: AES-256-GCM at rest, key loaded from the
+  environment, secrets write-only at the API.
+- Provider credential management (`OWNER` creates and deletes; members list).
+- Agent create, edit, list, delete and test APIs.
+- Prompt and model configuration (model, system prompt, temperature, max
+  tokens).
+- Token usage and latency capture on test prompts.
+- Provider timeouts and safe error mapping.
 
 **Done when**
 - A user can configure a provider, create an agent and run a test prompt.
 - Provider errors and timeouts are handled safely.
-- A configured tool can reach only approved destinations and cannot reach internal or metadata addresses.
-- MVP tools cannot perform sensitive actions that need human approval.
 - Secrets never appear in frontend responses or logs.
+
+**Not in M5** (deliberately deferred):
+- Tool runtime and egress enforcement. No tool execution path exists yet, so
+  host allowlists and address blocking move to M6 together with tool
+  invocation.
+- Persisting usage records: `usage_records` is execution-scoped (M6).
+- Prompt versioning, streaming output, retries/fallback, and adapters for
+  non-OpenAI-compatible providers.
 
 ### Milestone 6 — Workflow definition and execution
 
@@ -123,11 +133,16 @@ logging of pre-workspace auth events.
 - PostgreSQL-backed durable work queue with worker leases, heartbeats, and recovery of expired claims.
 - Request idempotency semantics and stable invocation keys for retryable tool calls.
 - Basic timeout handling and safe handling of unknown external-call outcomes.
+- Tool execution with default-deny egress: explicit host allowlists, blocking
+  of loopback/private/link-local/multicast/metadata addresses, a pinned DNS
+  result, and redirect revalidation. MVP tools stay read-only or low-risk.
 
 **Done when**
 - A saved workflow can be executed against an immutable version whose agent prompts and model settings do not change when reusable agents are edited.
 - Execution status and node outputs can be retrieved after completion.
 - Failures are persisted with useful diagnostic details.
+- A configured tool can reach only approved destinations and cannot reach
+  internal or metadata addresses.
 - A worker restart recovers queued work; a non-idempotent call with an unknown outcome is not replayed automatically.
 
 ### Milestone 7 — React application and visual builder
@@ -223,18 +238,18 @@ logging of pre-workspace auth events.
 ## 4. MVP priority checklist
 
 ### Must have
-- [ ] Register and sign in.
-- [ ] Create a workspace.
-- [ ] Configure one AI provider securely.
+- [x] Register and sign in.
+- [x] Create a workspace.
+- [x] Configure one AI provider securely.
 - [ ] Restrict tools to approved destinations and read-only or low-risk actions.
-- [ ] Create and test an agent.
+- [x] Create and test an agent.
 - [ ] Create and save a workflow.
 - [ ] Execute sequential nodes.
 - [ ] Persist execution and node status.
 - [ ] View execution history and logs.
 - [ ] Explain failures and support safe retries.
 - [ ] Cancel a workflow at a safe node boundary.
-- [ ] Enforce workspace-level authorization.
+- [x] Enforce workspace-level authorization.
 
 ### Should have
 - [ ] Workflow version history in the UI (immutable versions are required for the MVP).

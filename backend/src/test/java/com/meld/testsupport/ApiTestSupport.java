@@ -31,6 +31,8 @@ public abstract class ApiTestSupport {
     protected static final String CSRF_HEADER = "X-XSRF-TOKEN";
     protected static final String CSRF_COOKIE = "XSRF-TOKEN";
     protected static final String PASSWORD = "correct-horse-battery";
+    protected static final String API_KEY = "sk-test-0123456789abcdef";
+    protected static final String TEST_MODEL = "meta-llama/llama-3.1-8b-instruct:free";
 
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;
@@ -116,5 +118,56 @@ public abstract class ApiTestSupport {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().is(expectedStatus))
                 .andReturn();
+    }
+
+    protected MvcResult createCredential(MockHttpSession session, Cookie csrf, UUID workspaceId,
+                                         String apiKey, int expectedStatus) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("provider", "OPENROUTER");
+        body.put("displayName", "Test credential");
+        body.put("apiKey", apiKey);
+        return mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/providers", workspaceId)
+                        .session(session)
+                        .cookie(csrf)
+                        .header(CSRF_HEADER, csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().is(expectedStatus))
+                .andReturn();
+    }
+
+    protected UUID createCredential(MockHttpSession session, Cookie csrf, UUID workspaceId) throws Exception {
+        return UUID.fromString(contentAsTree(createCredential(session, csrf, workspaceId, API_KEY, 201))
+                .get("id").asText());
+    }
+
+    protected MvcResult createAgent(MockHttpSession session, Cookie csrf, UUID workspaceId,
+                                    String name, UUID credentialId, int expectedStatus) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", name);
+        body.put("description", "Test agent");
+        body.put("model", TEST_MODEL);
+        body.put("systemPrompt", "You are a test agent.");
+        body.put("providerCredentialId", credentialId.toString());
+        body.put("temperature", 0.2);
+        body.put("maxTokens", 128);
+        return mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/agents", workspaceId)
+                        .session(session)
+                        .cookie(csrf)
+                        .header(CSRF_HEADER, csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().is(expectedStatus))
+                .andReturn();
+    }
+
+    protected UUID createAgent(MockHttpSession session, Cookie csrf, UUID workspaceId,
+                               String name, UUID credentialId) throws Exception {
+        return UUID.fromString(contentAsTree(createAgent(session, csrf, workspaceId, name, credentialId, 201))
+                .get("id").asText());
+    }
+
+    protected com.fasterxml.jackson.databind.JsonNode contentAsTree(MvcResult result) throws Exception {
+        return objectMapper.readTree(result.getResponse().getContentAsString());
     }
 }

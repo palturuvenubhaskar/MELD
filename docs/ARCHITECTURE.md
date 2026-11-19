@@ -174,7 +174,8 @@ Use versioned REST endpoints under `/api/v1`.
 |---|---|
 | Authentication | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/csrf` |
 | Workspaces | `GET /workspaces`, `POST /workspaces`, `GET /workspaces/{workspaceId}`, `GET/POST /workspaces/{workspaceId}/members`, `DELETE /workspaces/{workspaceId}/members/{userId}` |
-| Agents | `GET /workspaces/{workspaceId}/agents`, `POST /workspaces/{workspaceId}/agents` |
+| Providers | `GET/POST /workspaces/{workspaceId}/providers`, `DELETE /workspaces/{workspaceId}/providers/{credentialId}` |
+| Agents | `GET/POST /workspaces/{workspaceId}/agents`, `GET/PATCH/DELETE /workspaces/{workspaceId}/agents/{agentId}`, `POST /workspaces/{workspaceId}/agents/{agentId}/test` |
 | Workflows | `GET /workspaces/{workspaceId}/workflows`, `POST /workspaces/{workspaceId}/workflows` |
 | Execution | `POST /workflows/{workflowId}/executions` |
 | Execution details | `GET /executions/{executionId}` |
@@ -199,6 +200,24 @@ Use DTOs at the API boundary. Do not expose JPA entities directly.
 - Global authority is `ROLE_USER` only. Workspace roles (`OWNER`, `MEMBER`) are
   per-workspace and enforced by `WorkspaceAccessService` on every
   workspace-scoped operation; they are not stored in the session.
+
+### Provider calls (M5)
+
+- Provider base URLs are server configuration (`meld.providers.base-urls.*`),
+  never request input, so a workspace cannot point the backend at an internal
+  host. `OPENROUTER_BASE_URL` and the other overrides exist for gateways and
+  local stubs.
+- The OpenAI-compatible chat-completions adapter serves OpenRouter first and
+  also covers OpenAI, Groq and Ollama endpoints. Secrets are decrypted only for
+  the duration of a call.
+- Default transport limits are 10 s connect and 60 s read (`PROVIDER_CONNECT_TIMEOUT`,
+  `PROVIDER_READ_TIMEOUT`).
+- Upstream failures map to stable codes: `PROVIDER_AUTH_FAILED`,
+  `PROVIDER_RATE_LIMITED`, `PROVIDER_ERROR`, `PROVIDER_TIMEOUT`,
+  `PROVIDER_BAD_RESPONSE`. The upstream body and the API key are never relayed
+  or logged.
+- Any workspace member can build and test agents. Provider credentials are
+  `OWNER`-managed, and a credential from another workspace is rejected.
 
 ## 8. Workflow execution design
 
@@ -252,6 +271,7 @@ Cancellation is cooperative. Persist a cancellation request, check it before sta
 
 - Enforce workspace-level authorization in backend services.
 - Encrypt API credentials using a managed key or a well-designed application encryption scheme.
+- Load the credential-encryption key from the environment; refuse to start when it is missing or is not a 32-byte AES key.
 - Keep encryption keys outside the database and source repository.
 - Redact secrets from logs and error messages.
 - Validate tool schemas and run network-capable tools through a worker with outbound access denied by default. Allow only explicitly approved destinations; reject loopback, private, link-local, multicast and cloud metadata addresses; pin a vetted DNS result for the connection; and revalidate every redirect target.

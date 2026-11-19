@@ -26,4 +26,12 @@ public interface AgentRepository extends JpaRepository<Agent, UUID> {
     Optional<Agent> findByIdAndWorkspace(@Param("id") UUID id, @Param("workspace") Workspace workspace);
 
     boolean existsByWorkspaceAndName(Workspace workspace, String name);
+
+    List<Agent> findByWorkspace_IdOrderByCreatedAtDesc(UUID workspaceId);
+
+    Optional<Agent> findByIdAndWorkspace_Id(UUID id, UUID workspaceId);
+
+    boolean existsByWorkspace_IdAndName(UUID workspaceId, String name);
+
+    boolean existsByWorkspace_IdAndNameAndIdNot(UUID workspaceId, String name, UUID id);
 }

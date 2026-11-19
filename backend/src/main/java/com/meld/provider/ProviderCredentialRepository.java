@@ -27,4 +27,8 @@ public interface ProviderCredentialRepository extends JpaRepository<ProviderCred
 
     @Query("SELECT c FROM ProviderCredential c WHERE c.id = :id AND c.workspace = :workspace")
     Optional<ProviderCredential> findByIdAndWorkspaceId(@Param("id") UUID id, @Param("workspace") Workspace workspace);
+
+    List<ProviderCredential> findByWorkspace_IdOrderByCreatedAtDesc(UUID workspaceId);
+
+    Optional<ProviderCredential> findByIdAndWorkspace_Id(UUID id, UUID workspaceId);
 }
