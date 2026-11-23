@@ -132,6 +132,57 @@ Read the provider key from `$env:MELD_SMOKE_PROVIDER_KEY` instead of pasting it
 into the script, so it stays out of shell history. The test response contains
 output, model, token counts and latency; no endpoint ever returns the key.
 
+### Workflows and executions (M6)
+
+Versions are created whole. A published version is executable; the execution
+endpoint only queues durable work, and the background worker claims it.
+
+```powershell
+$wf = Invoke-RestMethod "$base/workspaces/$($ws.id)/workflows" -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body (@{
+  name = 'Smoke Flow'; description = 'agent -> output'
+} | ConvertTo-Json)
+
+$version = Invoke-RestMethod "$base/workspaces/$($ws.id)/workflows/$($wf.id)/versions" -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body (@{
+  publish = $true
+  nodes = @(
+    @{ key = 'agent'; type = 'agent'; config = @{ agentId = $agent.id; inputTemplate = '{{input.topic}}' } },
+    @{ key = 'out'; type = 'output'; config = @{ outputTemplate = @{ answer = '{{agent.output}}' } } }
+  )
+  edges = @(@{ source = 'agent'; target = 'out' })
+} | ConvertTo-Json -Depth 8)
+
+$run = Invoke-RestMethod "$base/workspaces/$($ws.id)/workflows/$($wf.id)/executions" -Method Post -WebSession $s -Headers $h -ContentType 'application/json' -Body (@{
+  input = @{ topic = 'Say hello.' }; idempotencyKey = 'smoke-1'
+} | ConvertTo-Json -Depth 5)
+
+Start-Sleep -Seconds 2
+Invoke-RestMethod "$base/workspaces/$($ws.id)/executions/$($run.id)"   -WebSession $s
+Invoke-RestMethod "$base/workspaces/$($ws.id)/executions/$($run.id)/logs" -WebSession $s
+```
+
+Repeating the same `idempotencyKey` with the same version and input returns the
+original execution. Reusing it with different content returns
+`409 IDEMPOTENCY_CONFLICT`.
+
+Execution and tool settings (defaults shown):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MELD_EXECUTION_WORKER_ENABLED` | `true` | Disable the scheduled worker (tests drive it directly) |
+| `MELD_EXECUTION_POLL_INTERVAL_MS` | `500` | Queue poll interval |
+| `MELD_EXECUTION_HEARTBEAT_INTERVAL_MS` | `10000` | Lease heartbeat interval |
+| `MELD_EXECUTION_LEASE_DURATION` | `2m` | How long a claim stays valid |
+| `MELD_EXECUTION_MAX_PER_POLL` | `5` | Executions claimed per pass |
+| `MELD_EXECUTION_MAX_NODES` | `100` | Safety limit per execution |
+| `MELD_TOOLS_ALLOW_INSECURE_HTTP` | `false` | Allow `http://` tool destinations |
+| `TOOL_CONNECT_TIMEOUT` / `TOOL_READ_TIMEOUT` | `5s` / `15s` | Tool transport limits |
+| `TOOL_MAX_RESPONSE_BYTES` / `TOOL_MAX_REDIRECTS` | `1048576` / `3` | Response and redirect limits |
+
+`http_get` is HTTPS-only by default. Loopback, private, link-local, multicast
+and cloud metadata addresses are rejected both when a version is saved (for
+literal addresses) and when a connection is attempted; redirects are revalidated
+hop by hop.
+
 ## 3. Open decisions (needed by phase 4–5, not phase 0–2)
 
 Tracked in `PRD.md` §13. Proposed defaults, not yet ratified:
@@ -139,8 +190,8 @@ Tracked in `PRD.md` §13. Proposed defaults, not yet ratified:
 | Decision | Proposed |
 |---|---|
 | First provider | **Decided (M5):** OpenRouter through the OpenAI-compatible adapter; default model `meta-llama/llama-3.1-8b-instruct:free` |
-| MVP tools | 2 built-ins: allowlisted HTTP GET, JSON transform |
-| Workflow I/O | JSON in / JSON out |
+| MVP tools | **Decided (M6):** `http_get` (HTTPS-only, default-deny egress) and `json_transform` (local) |
+| Workflow I/O | **Decided (M6):** JSON in / JSON out |
 | Streaming | No — poll status (`ARCHITECTURE.md` §9) |
 | Limits | 120 s/node, 2k output tokens, 20 tool calls, 3 concurrent per workspace |
 | Auth transport | **Decided (M4):** HTTP-only session cookie, stateful Spring Security, CSRF double-submit |

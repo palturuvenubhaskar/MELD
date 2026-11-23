@@ -176,11 +176,12 @@ Use versioned REST endpoints under `/api/v1`.
 | Workspaces | `GET /workspaces`, `POST /workspaces`, `GET /workspaces/{workspaceId}`, `GET/POST /workspaces/{workspaceId}/members`, `DELETE /workspaces/{workspaceId}/members/{userId}` |
 | Providers | `GET/POST /workspaces/{workspaceId}/providers`, `DELETE /workspaces/{workspaceId}/providers/{credentialId}` |
 | Agents | `GET/POST /workspaces/{workspaceId}/agents`, `GET/PATCH/DELETE /workspaces/{workspaceId}/agents/{agentId}`, `POST /workspaces/{workspaceId}/agents/{agentId}/test` |
-| Workflows | `GET /workspaces/{workspaceId}/workflows`, `POST /workspaces/{workspaceId}/workflows` |
-| Execution | `POST /workflows/{workflowId}/executions` |
-| Execution details | `GET /executions/{executionId}` |
-| Logs | `GET /executions/{executionId}/logs` |
-| Cancellation | `POST /executions/{executionId}/cancel` |
+| Workflows | `GET/POST /workspaces/{workspaceId}/workflows`, `GET/PATCH/DELETE /workspaces/{workspaceId}/workflows/{workflowId}` |
+| Workflow versions | `GET/POST /workspaces/{workspaceId}/workflows/{workflowId}/versions`, `GET /workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionNumber}` |
+| Execution | `POST /workspaces/{workspaceId}/workflows/{workflowId}/executions`, `GET /workspaces/{workspaceId}/executions` |
+| Execution details | `GET /workspaces/{workspaceId}/executions/{executionId}` |
+| Logs | `GET /workspaces/{workspaceId}/executions/{executionId}/logs` |
+| Cancellation | `POST /workspaces/{workspaceId}/executions/{executionId}/cancel` |
 | Approval | `POST /approvals/{approvalId}/decision` |
 
 Use DTOs at the API boundary. Do not expose JPA entities directly.
@@ -219,6 +220,39 @@ Use DTOs at the API boundary. Do not expose JPA entities directly.
 - Any workspace member can build and test agents. Provider credentials are
   `OWNER`-managed, and a credential from another workspace is rejected.
 
+### Workflow versions and execution (M6)
+
+- A workflow is metadata only. All definition state lives in an immutable
+  version: `POST /workspaces/{workspaceId}/workflows/{workflowId}/versions`
+  creates the next version together with its nodes and edges in one request.
+- Node types are `agent`, `tool` and `output`. The MVP engine is sequential, so
+  a version must be one unbranched chain: unique node keys, exactly one start
+  node, at most one outgoing edge per node, every node reachable, and no cycles.
+  Violations return `400` with code `WORKFLOW_INVALID`.
+- `publish: true` sets `published_at` and marks the workflow `PUBLISHED`.
+  Executions require a published version: without `versionId` the latest
+  published version is used, and an unpublished version returns `409`
+  `WORKFLOW_NOT_PUBLISHED`.
+- At version creation an agent node copies non-secret settings (name, model,
+  system prompt, temperature, max output tokens) into its configuration and
+  keeps only the workspace-scoped `providerCredentialId`. Editing the reusable
+  agent afterwards does not change the version; saving the workflow again
+  creates version `n + 1`.
+- Workflow lists are workspace-scoped. A workflow, version or execution in
+  another workspace is reported as `404`, and the database composite foreign
+  keys reject cross-workspace links even if an application check is bypassed.
+- Deleting a workflow that already has executions returns `409`
+  `WORKFLOW_IN_USE`; history keeps an immutable reference to the version it ran.
+- Starting an execution returns `201` with a `PENDING` summary. An idempotent
+  replay with the same key, version and canonical input returns `200` with the
+  original execution; reusing the key for different content returns `409`
+  `IDEMPOTENCY_CONFLICT`.
+- Execution history and logs use a stable page envelope:
+  `{items, page, size, totalElements, totalPages}`.
+- Cancelling a `PENDING` execution marks it `CANCELLED` immediately. A `RUNNING`
+  execution records `cancelRequestedAt` and stops at the next node boundary.
+  Finished executions return `409` `EXECUTION_NOT_CANCELLABLE`.
+
 ## 8. Workflow execution design
 
 A workflow definition consists of:
@@ -227,19 +261,17 @@ A workflow definition consists of:
 - Input and output mappings.
 - A workflow version.
 
-Execution flow:
-1. Authenticate the request.
-2. Verify workspace access.
-3. Load and validate a specific immutable workflow version.
-4. In one database transaction, create a `PENDING` execution row, which is also the durable queue item. Hash the canonical workflow ID, version ID, and normalized input. For a repeated request idempotency key, return the prior execution only when the request hash matches; otherwise return a conflict.
-5. Resolve the starting node.
-6. Execute eligible nodes.
-7. Persist node inputs, outputs, status and logs.
-8. Follow outgoing edges according to node results.
-9. Pause for approval when required (post-MVP).
-10. Mark the execution completed, failed or cancelled.
+Execution flow (M6 implementation):
+1. Authenticate the request and verify workspace membership.
+2. Load the requested published version, or the latest published version.
+3. In one database transaction, create a `PENDING` execution row, which is also the durable queue item. Hash the canonical workflow ID, version ID, and normalized input. For a repeated request idempotency key, return the prior execution only when the request hash matches; otherwise return a conflict.
+4. A worker claims the row with `FOR UPDATE SKIP LOCKED`, records its lease and heartbeat, and runs the chain in order.
+5. Each node reads a rendered input (`workflowInput`, `previous`, and named node outputs) and writes an `input JSONB`, `output JSONB`, status and timestamps to its own `node_executions` row.
+6. Agent nodes call the provider through the snapshot; tool nodes run the read-only tool runtime; output nodes render a JSON template.
+7. Every node start, completion and failure is appended to `execution_logs`. Provider usage is written to `usage_records`.
+8. The execution is marked `COMPLETED`, `FAILED` or `CANCELLED`, and the lease is released.
 
-Each execution refers to an immutable workflow version. Published versions are append-only; edits create a new version. The version includes snapshots of non-secret agent settings, so editing a reusable agent does not silently change an existing version. Credentials remain references to workspace-owned secrets and may be rotated independently.
+Each execution refers to an immutable workflow version. Published versions are append-only; edits create a new version. The version includes snapshots of non-secret agent settings, so editing a reusable agent does not silently change an existing version. Credentials remain references to workspace-owned secrets and may be rotated independently. Tool output and model output are data, never instructions.
 
 ## 9. Real-time updates
 
@@ -255,6 +287,33 @@ Do not add real-time infrastructure before the basic execution lifecycle works.
 ## 10. Background execution
 
 For the MVP, use PostgreSQL as the durable work queue: workers claim pending execution rows with a short transaction using `FOR UPDATE SKIP LOCKED`, then save the lease owner and expiry before doing work. A worker periodically records a heartbeat. A reaper returns expired claims to the queue unless an in-flight non-idempotent tool call has an unknown outcome; then it marks that node `OUTCOME_UNKNOWN` and the execution `FAILED` for operator resolution. This keeps pending work from being lost with an in-memory executor.
+
+Implementation notes (M6):
+
+- `ExecutionWorker` runs on a scheduled poll (`meld.execution.poll-interval-ms`,
+  default 500 ms) and claims at most `max-per-poll` rows per pass.
+- A separate heartbeat pass extends only leases this worker still owns, so a long
+  provider call does not look abandoned. A bulk update is used so a heartbeat
+  cannot overwrite a status change committed after it read the row.
+- The lease defaults to 2 minutes (`MELD_EXECUTION_LEASE_DURATION`) and exceeds
+  the 60 s provider read timeout.
+- Recovery ignores leases owned by the live worker and locks each expired row
+  while it recovers it, so two instances cannot both act on the same abandoned
+  execution. An expired lease with no
+  `RUNNING` node returns to `PENDING`; completed nodes are not repeated because
+  the worker resumes from their saved outputs. An expired lease with a `RUNNING`
+  node sets that node to `OUTCOME_UNKNOWN`, sets the execution to `FAILED` with
+  code `OUTCOME_UNKNOWN`, and never replays it automatically.
+- Node attempt numbers increase per node key, so a future retry can add a new
+  attempt without violating `(execution_id, node_key, attempt_number)`.
+- Run-time failures persist a stable code (`PROVIDER_TIMEOUT`,
+  `PROVIDER_AUTH_FAILED`, `TOOL_EGRESS_BLOCKED`, ...) and a safe message. Raw
+  exception text is never stored.
+- Tests set `meld.execution.worker-enabled: false` and drive
+  `ExecutionWorker.claimAndRunOne()` directly; production enables the scheduler.
+- The MVP has no retryable side-effecting tools, so a stable invocation key is
+  not yet persisted. It becomes part of the retry contract when retries and
+  write-capable tools ship (M8/P1).
 
 Later:
 - Use Redis-backed queueing or a durable job system.
@@ -275,6 +334,14 @@ Cancellation is cooperative. Persist a cancellation request, check it before sta
 - Keep encryption keys outside the database and source repository.
 - Redact secrets from logs and error messages.
 - Validate tool schemas and run network-capable tools through a worker with outbound access denied by default. Allow only explicitly approved destinations; reject loopback, private, link-local, multicast and cloud metadata addresses; pin a vetted DNS result for the connection; and revalidate every redirect target.
+- M6 tool runtime details: `http_get` is HTTPS-only unless a deployment sets
+  `meld.tools.allow-insecure-http`; literal addresses and metadata hostnames are
+  rejected when the version is saved; at run time the guard resolves one
+  approved address and the client connects to exactly that address, so DNS
+  cannot change between validation and connect. Redirects are resolved and
+  revalidated hop by hop (default limit 3) on a client with no proxy and no
+  connection reuse. Responses are capped (`meld.tools.max-response-bytes`,
+  default 1 MiB). `json_transform` runs locally and cannot execute user code.
 - Do not expose cloud instance credentials or unrestricted internal network access to tool workers.
 - Apply rate limits and quotas.
 - Treat model output and tool output as untrusted input.

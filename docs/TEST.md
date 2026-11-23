@@ -106,6 +106,22 @@ Reject invalid transitions. Also verify:
 - Restart recovers pending work and handles expired leases according to the documented at-least-once policy.
 - Cancellation is persisted and takes effect at a safe node boundary.
 
+### Implemented coverage (M6)
+
+| Suite | Covers |
+|---|---|
+| `WorkflowApiTest` (9) | CRUD, version creation, graph validation (`WORKFLOW_INVALID`), publishing, immutability of the old version, workspace scoping |
+| `ExecutionApiTest` (8) | `201` queueing, idempotent replay, `IDEMPOTENCY_CONFLICT`, unpublished version `409`, paged history/logs, immediate cancel of `PENDING`, `409` for finished, cross-workspace `404` |
+| `ExecutionWorkerTest` (8) | Sequential agent → tool → output run, settings snapshot, provider timeout mapping, egress block, cooperative cancel, `OUTCOME_UNKNOWN` on expired running lease, recovery of a completed-node lease, replayed execution |
+| `ToolEgressGuardTest` (6) | HTTPS enforcement, blocked address classes and metadata hosts, save-time URL checks, redirect revalidation |
+| `PersistenceIntegrationTest` (12) | Schema constraints, claim/lease queries, cross-tenant foreign keys |
+
+Committed execution suites run with `@Transactional(propagation = NOT_SUPPORTED)`
+so the worker sees real committed rows; they use unique emails and workspace
+names because workspace slugs are globally unique and the rows survive the run.
+The scheduler is disabled in tests (`meld.execution.worker-enabled: false`) and
+the worker is driven directly.
+
 ## 6. Frontend usability checks
 - User can understand how to create the first agent.
 - Required fields are clear.

@@ -19,6 +19,9 @@ public interface NodeExecutionRepository extends JpaRepository<NodeExecution, UU
     @Query("SELECT n FROM NodeExecution n WHERE n.execution = :execution ORDER BY n.nodeKey, n.attemptNumber")
     List<NodeExecution> findByExecution(@Param("execution") Execution execution);
 
+    @Query("SELECT n FROM NodeExecution n WHERE n.execution = :execution ORDER BY n.startedAt ASC, n.nodeKey ASC")
+    List<NodeExecution> findByExecutionOrdered(@Param("execution") Execution execution);
+
     @Query("SELECT n FROM NodeExecution n WHERE n.execution = :execution AND n.nodeKey = :nodeKey ORDER BY n.attemptNumber")
     List<NodeExecution> findByExecutionAndNodeKey(@Param("execution") Execution execution, @Param("nodeKey") String nodeKey);
 

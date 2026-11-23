@@ -248,6 +248,12 @@ CREATE TABLE workflow_edges (
 
 Reject updates and deletes to published versions and their node and edge rows. Enforce this in the write service and in database triggers if other database writers are allowed. Create a new version for every published change.
 
+Implementation notes (V5/V6, M6): the service exposes create and read only
+(`WorkflowService`), so there is no update or delete path for a version, node
+or edge; no database trigger exists because the API is the only writer. A
+version is created whole together with its nodes and edges, and `publish: true`
+only sets `published_at` and the workflow's `PUBLISHED` status.
+
 ### executions and node_executions
 
 ```sql
@@ -307,6 +313,18 @@ CREATE TABLE node_executions (
 ```
 
 Use `OUTCOME_UNKNOWN` when a worker cannot confirm whether an external action completed. This state is not eligible for automatic retry; an operator must resolve it first.
+
+Implementation notes (V7, M6): `ExecutionWorker` claims the oldest claimable
+row in a short transaction (`FOR UPDATE SKIP LOCKED`), then sets `lease_owner`,
+`heartbeat_at` and `lease_expires_at`. A scheduled
+heartbeat extends only leases still owned by this worker via one bulk update, so
+it can never overwrite a status committed after the read. Recovery scans expired
+leases: without a `RUNNING` node the row returns to `PENDING` (completed nodes
+resume from their saved output), and with one it becomes `FAILED` /
+`OUTCOME_UNKNOWN`. Recovery takes a write lock on each expired row (skip
+locked), so two instances cannot both decide the fate of one execution.
+`attempt_number` stays 1 in the MVP; a future retry inserts
+attempt `n + 1` for the same `node_key`.
 
 ### execution_logs, approvals and usage_records
 

@@ -24,6 +24,16 @@ meld:
     read-timeout: 800ms
     base-urls:
       openrouter: http://localhost:1/unused
+  execution:
+    # Tests drive ExecutionWorker explicitly, so the scheduler must not race them.
+    worker-enabled: false
+    lease-duration: 30s
+  tools:
+    allow-insecure-http: false
+    connect-timeout: 500ms
+    read-timeout: 500ms
+    max-response-bytes: 65536
+    max-redirects: 1
 
 logging:
   level:

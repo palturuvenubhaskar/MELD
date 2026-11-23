@@ -145,6 +145,24 @@ logging of pre-workspace auth events.
   internal or metadata addresses.
 - A worker restart recovers queued work; a non-idempotent call with an unknown outcome is not replayed automatically.
 
+**Implementation notes (M6)**
+
+- Versions are created whole (`nodes` + `edges` in one request) and are
+  immutable; `publish` marks the version executable. The API, validation rules
+  and status codes are documented in `ARCHITECTURE.md` §7/§8.
+- The MVP graph is a single unbranched chain (one start node, one outgoing edge
+  per node, no cycles, no unreachable nodes). Conditional branching and
+  parallel execution remain post-MVP.
+- The durable queue, leases, heartbeat, recovery and `OUTCOME_UNKNOWN` behavior
+  are implemented in `ExecutionWorker`; tests disable the scheduler and drive
+  the worker directly.
+- The tool runtime ships `json_transform` and an HTTPS-only pinned `http_get`
+  with save-time and run-time egress checks. There is no write-capable tool yet,
+  so stable invocation keys for retryable tool calls are deferred to the retry
+  work in M8/P1; request-level idempotency is implemented now.
+- Not in M6: retry UI/API, approval nodes, branching, streaming, and per-node
+  timeouts beyond the provider transport timeout.
+
 ### Milestone 7 — React application and visual builder
 
 **Deliverables**

@@ -20,6 +20,12 @@ spring:
     serialization:
       write-dates-as-timestamps: false
     time-zone: UTC
+  task:
+    scheduling:
+      pool:
+        # One thread runs the queue loop; another keeps leases alive during a
+        # long node call.
+        size: 2
 
 server:
   port: ${SERVER_PORT:8080}
@@ -57,3 +63,18 @@ meld:
       openai: ${OPENAI_BASE_URL:https://api.openai.com/v1}
       groq: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
       ollama: ${OLLAMA_BASE_URL:http://localhost:11434/v1}
+  execution:
+    # The scheduler can be disabled in tests, which then call the worker directly.
+    worker-enabled: ${MELD_EXECUTION_WORKER_ENABLED:true}
+    poll-interval-ms: ${MELD_EXECUTION_POLL_INTERVAL_MS:500}
+    heartbeat-interval-ms: ${MELD_EXECUTION_HEARTBEAT_INTERVAL_MS:10000}
+    lease-duration: ${MELD_EXECUTION_LEASE_DURATION:2m}
+    max-per-poll: ${MELD_EXECUTION_MAX_PER_POLL:5}
+    max-nodes-per-execution: ${MELD_EXECUTION_MAX_NODES:100}
+  tools:
+    # Default-deny egress. HTTP is only for explicitly opted-in deployments.
+    allow-insecure-http: ${MELD_TOOLS_ALLOW_INSECURE_HTTP:false}
+    connect-timeout: ${TOOL_CONNECT_TIMEOUT:5s}
+    read-timeout: ${TOOL_READ_TIMEOUT:15s}
+    max-response-bytes: ${TOOL_MAX_RESPONSE_BYTES:1048576}
+    max-redirects: ${TOOL_MAX_REDIRECTS:3}

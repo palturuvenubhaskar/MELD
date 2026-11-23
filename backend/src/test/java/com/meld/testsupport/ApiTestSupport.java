@@ -170,4 +170,54 @@ public abstract class ApiTestSupport {
     protected com.fasterxml.jackson.databind.JsonNode contentAsTree(MvcResult result) throws Exception {
         return objectMapper.readTree(result.getResponse().getContentAsString());
     }
+
+    /**
+     * Unique email for suites that commit rows (worker/execution tests). Reusing
+     * a fixed address would clash with data from an earlier run.
+     */
+    protected static String uniqueEmail(String prefix) {
+        return prefix + "-" + UUID.randomUUID() + "@example.test";
+    }
+
+    /**
+     * Workspace slugs are globally unique, so committed suites cannot reuse a
+     * fixed display name across runs.
+     */
+    protected static String uniqueName(String prefix) {
+        return prefix + " " + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    /** JSON POST helper used by the workflow and execution suites. */
+    protected MvcResult postJson(MockHttpSession session, Cookie csrf, String url,
+                                 String json, int expectedStatus) throws Exception {
+        return mockMvc.perform(post(url)
+                        .session(session)
+                        .cookie(csrf)
+                        .header(CSRF_HEADER, csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().is(expectedStatus))
+                .andReturn();
+    }
+
+    protected MvcResult patchJson(MockHttpSession session, Cookie csrf, String url,
+                                  String json, int expectedStatus) throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch(url)
+                        .session(session)
+                        .cookie(csrf)
+                        .header(CSRF_HEADER, csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().is(expectedStatus))
+                .andReturn();
+    }
+
+    protected MvcResult getJson(MockHttpSession session, String url, int expectedStatus) throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get(url)
+                        .session(session))
+                .andExpect(status().is(expectedStatus))
+                .andReturn();
+    }
 }

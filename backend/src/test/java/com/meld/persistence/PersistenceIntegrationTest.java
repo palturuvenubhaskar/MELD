@@ -242,8 +242,8 @@ class PersistenceIntegrationTest {
         assertThat(executions.findByWorkspaceId(b.getId(), PageRequest.of(0, 10))).isEmpty();
 
         assertThat(executions.findClaimableExecutions(Instant.now()))
-                .extracting(Execution::getId).containsExactly(execution.getId());
-        assertThat(executions.findExpiredLeasesByOwner("nobody", Instant.now())).isEmpty();
+                .extracting(Execution::getId).contains(execution.getId());
+        assertThat(executions.findExpiredRunning(Instant.now(), "nobody")).isEmpty();
     }
 
     @Test

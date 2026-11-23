@@ -183,6 +183,28 @@ public class AgentService {
                 response.latencyMs());
     }
 
+    /**
+     * Internal only: the caller must have verified workspace access. Used by
+     * the workflow module to snapshot non-secret settings into a version.
+     */
+    @Transactional(readOnly = true)
+    public AgentSnapshot snapshot(UUID workspaceId, UUID agentId) {
+        Agent agent = requireAgent(workspaceId, agentId);
+        AgentRuntimeConfig config = AgentRuntimeConfig.parse(agent.getConfiguration(), objectMapper);
+        if (agent.getProviderCredentialId() == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "AGENT_NOT_READY",
+                    "The agent has no provider credential");
+        }
+        return new AgentSnapshot(
+                agent.getId(),
+                agent.getName(),
+                agent.getModel(),
+                agent.getSystemPrompt(),
+                agent.getProviderCredentialId(),
+                config.temperature(),
+                config.maxTokens());
+    }
+
     private Agent requireAgent(UUID workspaceId, UUID agentId) {
         return agents.findByIdAndWorkspace_Id(agentId, workspaceId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "AGENT_NOT_FOUND", "Agent not found"));
