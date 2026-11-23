@@ -6,8 +6,9 @@ durably, and inspect every step in an **Execution Center**.
 
 Stack (fixed by `docs/ARCHITECTURE.md`): Java 21 + Spring Boot 3 + Maven,
 PostgreSQL + Flyway, React 19 + TypeScript + Vite + Tailwind + React Flow
-(`@xyflow/react`). Modular monolith. This repository is at **phase 0** —
-docs only, no code yet.
+(`@xyflow/react`). Modular monolith. **Backend is at M6** (auth, workspaces,
+providers, agents, workflow versions, durable execution, tool egress).
+Frontend (`frontend/`) not yet scaffolded — Milestone 7 next.
 
 ---
 
@@ -26,6 +27,37 @@ Before you write, edit, or review **any** code in this repository:
 
 Only exception: a purely conversational question that touches no code and no
 files. Even then, check the relevant doc before asserting a requirement.
+
+---
+
+## Skills
+
+Load these with the `skill` tool. All of them are already provided by OpenCode
+(bundled or global); nothing needs installing for this repository.
+Project-local skills live in `.opencode/skills/`.
+
+| Work | Load | Why |
+|---|---|---|
+| Any implementation or review | `meld-docs` | Doc map and reading order per task type (step 2 above) |
+| Any coding task | `ponytail` | Smallest change that fully solves the task |
+| `frontend/` scaffold, workflow canvas (M7) | `react-flow-implementation` | `@xyflow/react` nodes, handles, custom nodes, viewport |
+| UI review, a11y, form states | `web-design-guidelines` | `RULES.md` Frontend requirements |
+| Verifying a running UI | `browser` | Console, network calls to `/api/v1`, screenshots |
+| Reviewing a diff before calling it done | `ponytail-review` | Correctness, safety, load, coverage, necessity |
+| Choosing a frontend module seam | `codebase-design` | Where the API data-access boundary goes |
+
+Conditional:
+
+- `astryx` — the CLI is installed on this machine, but `ARCHITECTURE.md` §6 and
+  `RULES.md` specify Tailwind CSS directly and never mention Astryx. Load it
+  only if that component-layer decision is changed deliberately; never mix it
+  in silently.
+- `graphify` — only once real code exists and a whole-codebase graph query is
+  actually wanted (there is no `graphify-out/` yet).
+
+Not applicable here: `design-mobile-apps` (desktop web app), `pptx`, the
+`rea-*` reverse-engineering skills, and the one-shot `ponytail-audit`,
+`ponytail-debt`, `ponytail-gain`, `ponytail-help` reports.
 
 ---
 

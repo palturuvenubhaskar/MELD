@@ -245,6 +245,6 @@ harness), but do not let it delay the engine.
 - [x] Java 21, Maven, Node, PostgreSQL 16, `psql` on PATH
 - [x] `meld` role, `meld` / `meld_test` databases, SCRAM verified
 - [x] `.env` with real credentials and generated encryption key
-- [ ] `backend/` scaffold builds and starts
-- [ ] Flyway migration applies to a clean `meld`
-- [ ] `frontend/` scaffold builds
+- [x] `backend/` scaffold builds and starts (M6)
+- [x] Flyway migration applies to a clean `meld` (10 migrations V1–V10)
+- [ ] `frontend/` scaffold builds (M7 next)
